@@ -40,29 +40,29 @@ def run_login_setup():
 
 def login_with_credentials(page, username, password, email=""):
     """
-    クラウド(GitHub Actions)用: 𝕏ログインの全パターン対応＆確認画面自動突破
+    クラウド(GitHub Actions)用: デバッグスクリーンショット機能付きログイン
     """
     print("Logging into X via credentials on Cloud...")
     page.goto("https://x.com/i/flow/login")
-    page.wait_for_timeout(5000)
+    page.wait_for_timeout(6000)
+    page.screenshot(path=os.path.join(BASE_DIR, "step1_login_page.png"))
 
     clean_user = username.replace("@", "").strip()
 
     # 1. ユーザー名/メールアドレスの入力
-    print("Entering username...")
+    print("Entering username/email:", clean_user)
     try:
         user_input = page.wait_for_selector('input[autocomplete="username"], input[name="text"]', timeout=25000)
         user_input.fill(clean_user)
         page.keyboard.press("Enter")
         page.wait_for_timeout(4000)
+        page.screenshot(path=os.path.join(BASE_DIR, "step2_after_username.png"))
     except Exception as e:
-        print(f"Username input note: {e}")
+        print(f"Username input error: {e}")
+        page.screenshot(path=os.path.join(BASE_DIR, "error_username.png"))
 
-    # 2. 追加確認ステップ (電話番号やユーザー名の再確認画面) の全パターン完全自動突破
+    # 2. 追加確認ステップ (電話番号やユーザー名の再確認画面) の全パターン自動突破
     print("Checking for extra security verification screen...")
-    page.wait_for_timeout(2000)
-    
-    # パスワード欄がまだ出ておらず、テキスト入力欄がある場合
     pass_input_check = page.query_selector('input[name="password"]')
     if not pass_input_check:
         extra_input = (
@@ -76,6 +76,7 @@ def login_with_credentials(page, username, password, email=""):
             extra_input.fill(fill_val)
             page.keyboard.press("Enter")
             page.wait_for_timeout(4000)
+            page.screenshot(path=os.path.join(BASE_DIR, "step3_after_extra_check.png"))
 
     # 3. パスワードの入力
     print("Entering password...")
@@ -84,11 +85,13 @@ def login_with_credentials(page, username, password, email=""):
         pass_input.fill(password)
         page.keyboard.press("Enter")
         page.wait_for_timeout(6000)
+        page.screenshot(path=os.path.join(BASE_DIR, "step4_after_password.png"))
     except Exception as e:
-        print(f"Password input note: {e}")
+        print(f"Password input error: {e}")
+        page.screenshot(path=os.path.join(BASE_DIR, "error_password.png"))
+        raise e
 
     print("Login sequence finished. Current URL:", page.url)
-
 
 def sanitize_and_trim_post(text):
     """
@@ -195,6 +198,7 @@ def run_auto_post(headless=True):
             print("Navigating to Compose Post page...")
             page.goto("https://x.com/compose/post")
             page.wait_for_timeout(4000)
+            page.screenshot(path=os.path.join(BASE_DIR, "step5_compose_page.png"))
 
             # テキスト入力エリア
             final_text = sanitize_and_trim_post(stock["post_text"])
@@ -210,6 +214,7 @@ def run_auto_post(headless=True):
                 file_input.set_input_files(card_img_path)
                 print("Attached image card.")
                 page.wait_for_timeout(5000)
+                page.screenshot(path=os.path.join(BASE_DIR, "step6_attached_image.png"))
 
             # 「ポストする」ボタンクリック
             print("Submitting post...")
@@ -226,6 +231,7 @@ def run_auto_post(headless=True):
 
             print("Post execution completed!")
             page.wait_for_timeout(6000)
+            page.screenshot(path=os.path.join(BASE_DIR, "step7_after_submit.png"))
 
             # 4. Obsidianのノートのタグを #投稿済み に書き換え
             mark_stock_as_posted(stock)
@@ -234,6 +240,11 @@ def run_auto_post(headless=True):
     except Exception as err:
         print("An error occurred during auto post:")
         traceback.print_exc()
+        try:
+            if 'page' in locals():
+                page.screenshot(path=os.path.join(BASE_DIR, "error_final_state.png"))
+        except:
+            pass
         sys.exit(1)
 
 if __name__ == "__main__":

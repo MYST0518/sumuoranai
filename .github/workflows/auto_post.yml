@@ -2,18 +2,16 @@ name: Sumu 𝕏 Cloud Auto Post
 
 on:
   schedule:
-    # テスト用: 日本時間 23:31 (UTC 14:31) および定時 (朝08:00 / 夜21:00)
-    - cron: '31 14 * * *'
     - cron: '0 23 * * *'
     - cron: '0 12 * * *'
-  workflow_dispatch: # 手動実行ボタン用
+  workflow_dispatch:
 
 jobs:
   post:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write # ワークフロー内からのgit push書き込み権限を明示許可
+      contents: write
 
     steps:
       - name: Check out repository
@@ -37,10 +35,22 @@ jobs:
         env:
           X_USERNAME: ${{ secrets.X_USERNAME }}
           X_PASSWORD: ${{ secrets.X_PASSWORD }}
+          X_EMAIL: ${{ secrets.X_EMAIL }}
         run: |
           python auto_post.py
 
+      - name: Upload Error Screenshot and Logs on Failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots-and-logs
+          path: |
+            *.png
+            *.txt
+            *.log
+
       - name: Commit and push updated Obsidian stock notes
+        if: success()
         run: |
           git config --global user.name "Sumu Auto Poster Bot"
           git config --global user.email "bot@sumu-fortune.com"
