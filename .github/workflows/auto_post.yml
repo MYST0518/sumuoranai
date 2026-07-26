@@ -2,8 +2,8 @@ name: Sumu 𝕏 Cloud Auto Post
 
 on:
   schedule:
-    # テスト用: 日本時間 23:09 (UTC 14:09) および定時 (朝08:00 / 夜21:00)
-    - cron: '09 14 * * *'
+    # テスト用: 日本時間 23:31 (UTC 14:31) および定時 (朝08:00 / 夜21:00)
+    - cron: '31 14 * * *'
     - cron: '0 23 * * *'
     - cron: '0 12 * * *'
   workflow_dispatch: # 手動実行ボタン用
@@ -11,6 +11,9 @@ on:
 jobs:
   post:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # ワークフロー内からのgit push書き込み権限を明示許可
 
     steps:
       - name: Check out repository
