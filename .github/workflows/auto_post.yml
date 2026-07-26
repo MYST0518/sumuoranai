@@ -1,0 +1,45 @@
+name: Sumu 𝕏 Cloud Auto Post
+
+on:
+  schedule:
+    # 毎日 日本時間 08:00 (UTC 23:00) と 日本時間 21:00 (UTC 12:00) に自動実行
+    - cron: '0 23 * * *'
+    - cron: '0 12 * * *'
+  workflow_dispatch: # 手動実行ボタン用
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright pillow requests
+          python -m playwright install chromium
+
+      - name: Run Auto Post Script
+        env:
+          X_USERNAME: ${{ secrets.X_USERNAME }}
+          X_PASSWORD: ${{ secrets.X_PASSWORD }}
+        run: |
+          python auto_post.py
+
+      - name: Commit and push updated Obsidian stock notes
+        run: |
+          git config --global user.name "Sumu Auto Poster Bot"
+          git config --global user.email "bot@sumu-fortune.com"
+          git add .
+          git diff-index --quiet HEAD || git commit -m "Auto Post: Update Obsidian stock status [skip ci]"
+          git push
