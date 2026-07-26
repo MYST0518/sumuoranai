@@ -2,8 +2,8 @@ name: Sumu 𝕏 Cloud Auto Post
 
 on:
   schedule:
-    # テスト用: 日本時間 22:57 (UTC 13:57) および定時 (朝08:00 / 夜21:00)
-    - cron: '57 13 * * *'
+    # テスト用: 日本時間 23:09 (UTC 14:09) および定時 (朝08:00 / 夜21:00)
+    - cron: '09 14 * * *'
     - cron: '0 23 * * *'
     - cron: '0 12 * * *'
   workflow_dispatch: # 手動実行ボタン用
