@@ -2,18 +2,36 @@ import os
 import re
 from datetime import datetime
 
-OBSIDIAN_STOCK_DIR = r"C:\Users\myst\.gemini\antigravity\scratch\miya\🔮澄（すむ）占いSNS運用\02_SNS投稿ストック"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROBA3_URL = "https://roba3.com/expert/id842"
+
+def get_stock_directory():
+    """
+    相対パス(クラウド/リポジトリ内)および絶対パス(ローカル)からObsidianストックフォルダを探索
+    """
+    candidates = [
+        os.path.join(BASE_DIR, "02_SNS投稿ストック"),
+        os.path.join(BASE_DIR, "05_タロット78枚デッキ保管庫"),
+        os.path.join(BASE_DIR, "🔮澄（すむ）占いSNS運用", "02_SNS投稿ストック"),
+        r"C:\Users\myst\.gemini\antigravity\scratch\miya\🔮澄（すむ）占いSNS運用\02_SNS投稿ストック"
+    ]
+    for d in candidates:
+        if os.path.exists(d):
+            return d
+    return None
 
 def get_next_unposted_stock():
     """
     Obsidianの投稿ストックフォルダから未投稿(#ストック)の投稿を1件取得する
     """
-    if not os.path.exists(OBSIDIAN_STOCK_DIR):
-        print(f"Error: Stock directory not found: {OBSIDIAN_STOCK_DIR}")
+    stock_dir = get_stock_directory()
+    if not stock_dir:
+        print("Error: Stock directory not found in candidates.")
         return None
 
-    for root, _, files in os.walk(OBSIDIAN_STOCK_DIR):
+    print(f"Reading Obsidian stock from: {stock_dir}")
+
+    for root, _, files in os.walk(stock_dir):
         for file in files:
             if not file.endswith(".md"):
                 continue
@@ -71,8 +89,6 @@ def mark_stock_as_posted(stock_info):
         f.write(new_content)
 
     print(f"Obsidian note updated -> Posted at {now_str}")
-
-
 
 if __name__ == "__main__":
     stock = get_next_unposted_stock()
