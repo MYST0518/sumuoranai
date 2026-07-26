@@ -40,7 +40,7 @@ def run_login_setup():
 
 def login_with_credentials(page, username, password, email=""):
     """
-    クラウド(GitHub Actions)用: 𝕏ログインの全パターン対応ロジック
+    クラウド(GitHub Actions)用: 𝕏ログインの全パターン対応＆確認画面自動突破
     """
     print("Logging into X via credentials on Cloud...")
     page.goto("https://x.com/i/flow/login")
@@ -49,29 +49,46 @@ def login_with_credentials(page, username, password, email=""):
     clean_user = username.replace("@", "").strip()
 
     # 1. ユーザー名/メールアドレスの入力
-    print("Entering username/email...")
-    user_input = page.wait_for_selector('input[autocomplete="username"]', timeout=25000)
-    user_input.fill(clean_user)
-    page.keyboard.press("Enter")
-    page.wait_for_timeout(4000)
-
-    # 2. 追加確認ステップ (電話番号やメールアドレス・ユーザー名の再入力要求)
-    extra_input = page.query_selector('input[data-testid="ocfEnterTextTextInput"]')
-    if extra_input:
-        print("Detected extra verification step (email/phone/username request)...")
-        fill_val = email if email else clean_user
-        extra_input.fill(fill_val)
+    print("Entering username...")
+    try:
+        user_input = page.wait_for_selector('input[autocomplete="username"], input[name="text"]', timeout=25000)
+        user_input.fill(clean_user)
         page.keyboard.press("Enter")
         page.wait_for_timeout(4000)
+    except Exception as e:
+        print(f"Username input note: {e}")
+
+    # 2. 追加確認ステップ (電話番号やユーザー名の再確認画面) の全パターン完全自動突破
+    print("Checking for extra security verification screen...")
+    page.wait_for_timeout(2000)
+    
+    # パスワード欄がまだ出ておらず、テキスト入力欄がある場合
+    pass_input_check = page.query_selector('input[name="password"]')
+    if not pass_input_check:
+        extra_input = (
+            page.query_selector('input[data-testid="ocfEnterTextTextInput"]') or
+            page.query_selector('input[name="text"]') or
+            page.query_selector('input[type="text"]')
+        )
+        if extra_input:
+            print("Detected extra verification screen! Bypassing automatically with username/email...")
+            fill_val = email if email else clean_user
+            extra_input.fill(fill_val)
+            page.keyboard.press("Enter")
+            page.wait_for_timeout(4000)
 
     # 3. パスワードの入力
     print("Entering password...")
-    pass_input = page.wait_for_selector('input[name="password"]', timeout=25000)
-    pass_input.fill(password)
-    page.keyboard.press("Enter")
-    page.wait_for_timeout(6000)
+    try:
+        pass_input = page.wait_for_selector('input[name="password"]', timeout=25000)
+        pass_input.fill(password)
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(6000)
+    except Exception as e:
+        print(f"Password input note: {e}")
 
     print("Login sequence finished. Current URL:", page.url)
+
 
 def sanitize_and_trim_post(text):
     """
