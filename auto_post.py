@@ -174,12 +174,24 @@ def run_auto_post(headless=True):
 
         print("Card Image Ready:", card_img_path)
 
-        # 3. Playwrightで𝕏へ自動投稿
+        # 3. Playwrightで𝕏へ自動投稿 (ボット検知完全回避ステルス設定)
+        user_agent_str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         with sync_playwright() as p:
             if X_USERNAME and X_PASSWORD:
-                browser = p.chromium.launch(headless=headless, args=["--disable-blink-features=AutomationControlled"])
-                context = browser.new_context(viewport={"width": 1280, "height": 900})
+                browser = p.chromium.launch(
+                    headless=headless, 
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox"
+                    ]
+                )
+                context = browser.new_context(
+                    viewport={"width": 1280, "height": 900},
+                    user_agent=user_agent_str
+                )
                 page = context.new_page()
+                page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
                 login_with_credentials(page, X_USERNAME, X_PASSWORD, X_EMAIL)
             else:
                 if not os.path.exists(USER_DATA_DIR):
@@ -189,11 +201,14 @@ def run_auto_post(headless=True):
                     user_data_dir=USER_DATA_DIR,
                     headless=headless,
                     viewport={"width": 1280, "height": 900},
+                    user_agent=user_agent_str,
                     args=["--disable-blink-features=AutomationControlled"]
                 )
                 page = context.new_page()
+                page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
                 page.goto("https://x.com/home")
                 page.wait_for_timeout(4000)
+
 
             print("Navigating to Compose Post page...")
             page.goto("https://x.com/compose/post")
