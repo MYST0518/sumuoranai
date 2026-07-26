@@ -65,7 +65,37 @@ def login_with_credentials(page, username, password):
     page.keyboard.press("Enter")
     page.wait_for_timeout(4000)
 
+def sanitize_and_trim_post(text):
+    """
+    𝕏の140文字制限に絶対収まるように本文を厳格にトリミング調整する
+    """
+    lines = text.strip().split("\n")
+    body_parts = []
+    footer_parts = []
+
+    for line in lines:
+        if "roba3.com" in line or "#" in line or "▼" in line:
+            footer_parts.append(line)
+        else:
+            body_parts.append(line)
+
+    body_text = "\n".join(body_parts).strip()
+
+    # 本文を最大75文字に安全カット
+    if len(body_text) > 75:
+        body_text = body_text[:72] + "..."
+
+    # ロバミミURLとハッシュタグの固定フッター
+    footer_text = (
+        "▼ロバミミでの個別の鑑定ご予約はこちら🔮\n"
+        "https://roba3.com/expert/id842\n"
+        "#今日の占い #タロット #占い師澄 #ロバミミ"
+    )
+
+    return f"{body_text}\n\n{footer_text}"
+
 def run_auto_post(headless=True):
+
     """
     自動投稿のメイン処理 (ローカル / クラウド共通)
     """
@@ -147,11 +177,13 @@ def run_auto_post(headless=True):
         page.goto("https://x.com/compose/post")
         page.wait_for_timeout(3000)
 
-        # テキスト入力エリア
+        # テキスト入力エリア (140文字以内に安全カット済みの文章)
+        final_text = sanitize_and_trim_post(stock["post_text"])
         editor = page.wait_for_selector('div[data-testid="tweetTextarea_0"]', timeout=15000)
         editor.click()
-        page.keyboard.insert_text(stock["post_text"])
+        page.keyboard.insert_text(final_text)
         page.wait_for_timeout(1500)
+
 
         # 画像アップロード
         file_input = page.query_selector('input[data-testid="fileInput"]')
