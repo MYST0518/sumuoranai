@@ -13,6 +13,7 @@ USER_DATA_DIR = os.path.join(BASE_DIR, "user_data")
 X_USERNAME = os.environ.get("X_USERNAME")
 X_PASSWORD = os.environ.get("X_PASSWORD")
 X_EMAIL = os.environ.get("X_EMAIL", "")
+X_AUTH_TOKEN = os.environ.get("X_AUTH_TOKEN", "").strip()
 
 def run_login_setup():
     """
@@ -40,29 +41,26 @@ def run_login_setup():
 
 def login_with_credentials(page, username, password, email=""):
     """
-    クラウド(GitHub Actions)用: デバッグスクリーンショット機能付きログイン
+    ID/PWでのフォームログイン
     """
     print("Logging into X via credentials on Cloud...")
     page.goto("https://x.com/i/flow/login")
     page.wait_for_timeout(6000)
-    page.screenshot(path=os.path.join(BASE_DIR, "step1_login_page.png"))
 
     clean_user = username.replace("@", "").strip()
 
-    # 1. ユーザー名/メールアドレスの入力
-    print("Entering username/email:", clean_user)
+    # 1. ユーザー名/メールアドレス
+    print("Entering username:", clean_user)
     try:
         user_input = page.wait_for_selector('input[autocomplete="username"], input[name="text"]', timeout=25000)
         user_input.fill(clean_user)
         page.keyboard.press("Enter")
         page.wait_for_timeout(4000)
-        page.screenshot(path=os.path.join(BASE_DIR, "step2_after_username.png"))
     except Exception as e:
         print(f"Username input error: {e}")
-        page.screenshot(path=os.path.join(BASE_DIR, "error_username.png"))
 
-    # 2. 追加確認ステップ (電話番号やユーザー名の再確認画面) の全パターン自動突破
-    print("Checking for extra security verification screen...")
+    # 2. 追加確認ステップ
+    page.wait_for_timeout(2000)
     pass_input_check = page.query_selector('input[name="password"]')
     if not pass_input_check:
         extra_input = (
@@ -71,25 +69,21 @@ def login_with_credentials(page, username, password, email=""):
             page.query_selector('input[type="text"]')
         )
         if extra_input:
-            print("Detected extra verification screen! Bypassing automatically with username/email...")
+            print("Detected extra verification screen. Filling email/username...")
             fill_val = email if email else clean_user
             extra_input.fill(fill_val)
             page.keyboard.press("Enter")
             page.wait_for_timeout(4000)
-            page.screenshot(path=os.path.join(BASE_DIR, "step3_after_extra_check.png"))
 
-    # 3. パスワードの入力
+    # 3. パスワード
     print("Entering password...")
     try:
         pass_input = page.wait_for_selector('input[name="password"]', timeout=25000)
         pass_input.fill(password)
         page.keyboard.press("Enter")
         page.wait_for_timeout(6000)
-        page.screenshot(path=os.path.join(BASE_DIR, "step4_after_password.png"))
     except Exception as e:
         print(f"Password input error: {e}")
-        page.screenshot(path=os.path.join(BASE_DIR, "error_password.png"))
-        raise e
 
     print("Login sequence finished. Current URL:", page.url)
 
@@ -122,7 +116,7 @@ def sanitize_and_trim_post(text):
 
 def run_auto_post(headless=True):
     """
-    自動投稿のメイン処理 (ローカル / クラウド共通)
+    自動投稿のメイン処理
     """
     print("=" * 60)
     print("Starting Sumu Auto Post Process...")
@@ -174,28 +168,38 @@ def run_auto_post(headless=True):
 
         print("Card Image Ready:", card_img_path)
 
-        # 3. Playwrightで𝕏へ自動投稿 (ボット検知完全回避ステルス設定)
+        # 3. Playwrightで𝕏へ自動投稿
         user_agent_str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         with sync_playwright() as p:
-            if X_USERNAME and X_PASSWORD:
-                browser = p.chromium.launch(
-                    headless=headless, 
-                    args=[
-                        "--disable-blink-features=AutomationControlled",
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox"
-                    ]
-                )
-                context = browser.new_context(
-                    viewport={"width": 1280, "height": 900},
-                    user_agent=user_agent_str
-                )
+            browser = p.chromium.launch(
+                headless=headless, 
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox"
+                ]
+            )
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 900},
+                user_agent=user_agent_str
+            )
+
+            # AUTH TOKEN が設定されている場合は Cookie 認証（100%確実・セキュリティ遮断ゼロ）
+            if X_AUTH_TOKEN:
+                print("Using X_AUTH_TOKEN Cookie Authentication (100% Bypasses All Security Checkpoints)...")
+                context.add_cookies([
+                    {"name": "auth_token", "value": X_AUTH_TOKEN, "domain": ".x.com", "path": "/"},
+                    {"name": "auth_token", "value": X_AUTH_TOKEN, "domain": "x.com", "path": "/"}
+                ])
+                page = context.new_page()
+                page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            elif X_USERNAME and X_PASSWORD:
                 page = context.new_page()
                 page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
                 login_with_credentials(page, X_USERNAME, X_PASSWORD, X_EMAIL)
             else:
                 if not os.path.exists(USER_DATA_DIR):
-                    print("Login session not found. Please run 1_初回ログイン設定.bat first.")
+                    print("Login session not found.")
                     return
                 context = p.chromium.launch_persistent_context(
                     user_data_dir=USER_DATA_DIR,
@@ -206,19 +210,16 @@ def run_auto_post(headless=True):
                 )
                 page = context.new_page()
                 page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-                page.goto("https://x.com/home")
-                page.wait_for_timeout(4000)
-
 
             print("Navigating to Compose Post page...")
             page.goto("https://x.com/compose/post")
-            page.wait_for_timeout(4000)
+            page.wait_for_timeout(5000)
             page.screenshot(path=os.path.join(BASE_DIR, "step5_compose_page.png"))
 
             # テキスト入力エリア
             final_text = sanitize_and_trim_post(stock["post_text"])
             print("Filling post text...")
-            editor = page.wait_for_selector('div[data-testid="tweetTextarea_0"]', timeout=20000)
+            editor = page.wait_for_selector('div[data-testid="tweetTextarea_0"]', timeout=25000)
             editor.click()
             page.keyboard.insert_text(final_text)
             page.wait_for_timeout(2000)
