@@ -13,7 +13,8 @@ USER_DATA_DIR = os.path.join(BASE_DIR, "user_data")
 X_USERNAME = os.environ.get("X_USERNAME")
 X_PASSWORD = os.environ.get("X_PASSWORD")
 X_EMAIL = os.environ.get("X_EMAIL", "")
-X_AUTH_TOKEN = os.environ.get("X_AUTH_TOKEN", "").strip()
+X_AUTH_TOKEN = os.environ.get("X_AUTH_TOKEN", "08e18702ac89777f2452049b5fcffa32bc2d2a8f").strip()
+
 
 def run_login_setup():
     """
